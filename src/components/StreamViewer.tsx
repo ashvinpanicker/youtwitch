@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Play, MessageSquare, ExternalLink, Maximize, Minimize, ChevronUp, ChevronDown } from 'lucide-react';
+import { ExternalLink, Maximize, Minimize, ChevronUp, ChevronDown } from 'lucide-react';
 
 
 const StreamViewer: React.FC = () => {
@@ -206,9 +206,8 @@ const StreamViewer: React.FC = () => {
           <>
             <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold flex items-center gap-2">
-                <Play className="w-6 h-6 text-purple-500" />
-                Hybrid Stream Viewer
-                <MessageSquare className="w-6 h-6 text-blue-500" />
+                <img src="/favicon.svg" alt="YouTwitch Logo" className="w-6 h-6 rounded-sm" />
+                YouTwitch: YouTube Stream + Twitch Chat
               </h1>
               
               <div className="flex items-center gap-2">
@@ -268,7 +267,7 @@ const StreamViewer: React.FC = () => {
                 <button
                   onClick={initialiseStreamAndChat}
                   disabled={!canLoadStream}
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium
+                  className="px-6 py-2 mt-6 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium
                            hover:from-purple-700 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-purple-500
                            disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
                            flex items-center gap-2 whitespace-nowrap"
@@ -339,7 +338,7 @@ const StreamViewer: React.FC = () => {
         <div className="flex-1 flex items-center justify-center p-8" style={{ height: mainHeight }}>
           <div className="text-center">
             <div className="w-20 h-20 bg-background rounded-full flex items-center justify-center mx-auto mb-4">
-              <Play className="w-8 h-8 text-purple-500" />
+              <img src="/favicon.svg" alt="YouTwitch Logo" className="w-6 h-6 rounded-sm" />
             </div>
             <h2 className="text-xl font-semibold text-gray-300 mb-2">
               Ready to Stream
