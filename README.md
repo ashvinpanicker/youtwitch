@@ -6,7 +6,7 @@ YouTwitch is a web application that provides a streaming experience similar to p
 
 Here's a glimpse of the YouTwitch application in action:
 
-![YouTwitch Screenshot](/youtwitch-screenshot.png)
+![YouTwitch Screenshot](/youtwitch-app.png)
 
 _Note: Please place the screenshot image file named `youtwitch-screenshot.png` in a `docs/` directory at the root of the project._
 
