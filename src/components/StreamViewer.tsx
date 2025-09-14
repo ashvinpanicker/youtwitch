@@ -325,7 +325,7 @@ const StreamViewer: React.FC = () => {
           >
             <div className="flex-1">
               <iframe
-                src={`https://www.twitch.tv/embed/${activeTwitchChannel}/chat?parent=youtwitch.vercel.app&darkpopout=true`}
+                src={`https://www.twitch.tv/embed/${activeTwitchChannel}/chat?parent=${window.location.hostname}&darkpopout=true`}
                 width="100%"
                 height="100%"
                 frameBorder="0"
