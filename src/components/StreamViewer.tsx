@@ -7,7 +7,7 @@ const StreamViewer: React.FC = () => {
   const [twitchUrl, setTwitchUrl] = useState('');
   const [activeYoutubeId, setActiveYoutubeId] = useState<string | null>(null);
   const [activeTwitchChannel, setActiveTwitchChannel] = useState<string | null>(null);
-  const [isHeaderVisible, setIsHeaderVisible] = useState(false);
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true);
   const [chatWidth, setChatWidth] = useState(320);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
