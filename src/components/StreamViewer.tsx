@@ -57,12 +57,12 @@ const StreamViewer: React.FC = () => {
 
   const extractYoutubeId = (url: string): string | null => {
     if (!url || !url.trim()) return null;
-    
+
     const patterns = [
       /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/,
       /(?:m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/
     ];
-    
+
     for (const pattern of patterns) {
       const match = url.match(pattern);
       if (match && match[1]) return match[1];
@@ -72,19 +72,19 @@ const StreamViewer: React.FC = () => {
 
   const extractTwitchChannel = (url: string): string | null => {
     if (!url || !url.trim()) return null;
-    
+
     const match = url.match(/twitch\.tv\/([a-zA-Z0-9_]+)/);
     return match && match[1] ? match[1] : null;
   };
 
   const initialiseStreamAndChat = () => {
     console.log('Initialising stream and chat with URLs:', { youtubeUrl, twitchUrl });
-    
+
     const ytId = extractYoutubeId(youtubeUrl);
     const twitchChannel = extractTwitchChannel(twitchUrl);
-    
+
     console.log('Extracted IDs:', { ytId, twitchChannel });
-    
+
     if (ytId) {
       setActiveYoutubeId(ytId);
       console.log('Set YouTube ID:', ytId);
@@ -129,9 +129,9 @@ const StreamViewer: React.FC = () => {
     if (mouseTimer) {
       clearTimeout(mouseTimer);
     }
-    
+
     setShowControls(true);
-    
+
     if (activeYoutubeId && activeTwitchChannel) {
       const timer = setTimeout(() => {
         setShowControls(false);
@@ -145,7 +145,7 @@ const StreamViewer: React.FC = () => {
       document.addEventListener('mousemove', resetMouseTimer);
       document.addEventListener('mousedown', resetMouseTimer);
       document.addEventListener('keydown', resetMouseTimer);
-      
+
       // Start the timer immediately
       resetMouseTimer();
     } else {
@@ -209,7 +209,7 @@ const StreamViewer: React.FC = () => {
                 <img src="/favicon.svg" alt="YouTwitch Logo" className="w-6 h-6 rounded-sm" />
                 YouTwitch: YouTube Stream + Twitch Chat
               </h1>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={toggleFullscreen}
@@ -224,7 +224,7 @@ const StreamViewer: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 items-end">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -244,7 +244,7 @@ const StreamViewer: React.FC = () => {
                   }`}
                 />
               </div>
-              
+
               <div className="flex items-center gap-4">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-300 mb-2">
