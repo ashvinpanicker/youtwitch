@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ExternalLink, Maximize, Minimize, ChevronUp, ChevronDown } from 'lucide-react';
-
+import TwitchChat from './TwitchChat';
 
 const StreamViewer: React.FC = () => {
-  const [youtubeUrl, setYoutubeUrl] = useState('');
-  const [twitchUrl, setTwitchUrl] = useState('');
+  const [youtubeUrl, setYoutubeUrl] = useState('https://www.youtube.com/watch?v=jfKfPfyJRdk');
+  const [twitchUrl, setTwitchUrl] = useState('https://twitch.tv/twitchdev');
   const [activeYoutubeId, setActiveYoutubeId] = useState<string | null>(null);
   const [activeTwitchChannel, setActiveTwitchChannel] = useState<string | null>(null);
   const [isHeaderVisible, setIsHeaderVisible] = useState(true);
@@ -17,27 +17,29 @@ const StreamViewer: React.FC = () => {
 
   // Load from localStorage on mount
   useEffect(() => {
-    const savedYoutubeUrl = localStorage.getItem('streamViewer_youtubeUrl');
-    const savedTwitchUrl = localStorage.getItem('streamViewer_twitchUrl');
+    // const savedYoutubeUrl = localStorage.getItem('streamViewer_youtubeUrl');
+    // const savedTwitchUrl = localStorage.getItem('streamViewer_twitchUrl');
     const savedChatWidth = localStorage.getItem('streamViewer_chatWidth');
     const savedYoutubeId = localStorage.getItem('streamViewer_activeYoutubeId');
     const savedTwitchChannel = localStorage.getItem('streamViewer_activeTwitchChannel');
 
-    if (savedYoutubeUrl) setYoutubeUrl(savedYoutubeUrl);
-    if (savedTwitchUrl) setTwitchUrl(savedTwitchUrl);
+    // Temporarily disable loading from localStorage for testing hardcoded values
+    // if (savedYoutubeUrl) setYoutubeUrl(savedYoutubeUrl);
+    // if (savedTwitchUrl) setTwitchUrl(savedTwitchUrl);
     if (savedChatWidth) setChatWidth(parseInt(savedChatWidth));
     if (savedYoutubeId) setActiveYoutubeId(savedYoutubeId);
     if (savedTwitchChannel) setActiveTwitchChannel(savedTwitchChannel);
   }, []);
 
   // Save to localStorage when values change
-  useEffect(() => {
-    localStorage.setItem('streamViewer_youtubeUrl', youtubeUrl);
-  }, [youtubeUrl]);
+  // Temporarily disable saving to localStorage for testing hardcoded values
+  // useEffect(() => {
+  //   localStorage.setItem('streamViewer_youtubeUrl', youtubeUrl);
+  // }, [youtubeUrl]);
 
-  useEffect(() => {
-    localStorage.setItem('streamViewer_twitchUrl', twitchUrl);
-  }, [twitchUrl]);
+  // useEffect(() => {
+  //   localStorage.setItem('streamViewer_twitchUrl', twitchUrl);
+  // }, [twitchUrl]);
 
   useEffect(() => {
     localStorage.setItem('streamViewer_chatWidth', chatWidth.toString());
@@ -54,6 +56,12 @@ const StreamViewer: React.FC = () => {
       localStorage.setItem('streamViewer_activeTwitchChannel', activeTwitchChannel);
     }
   }, [activeTwitchChannel]);
+
+  useEffect(() => {
+    if (youtubeUrl && twitchUrl && !activeYoutubeId && !activeTwitchChannel) {
+      initialiseStreamAndChat();
+    }
+  }, [youtubeUrl, twitchUrl, activeYoutubeId, activeTwitchChannel]);
 
   const extractYoutubeId = (url: string): string | null => {
     if (!url || !url.trim()) return null;
@@ -78,6 +86,7 @@ const StreamViewer: React.FC = () => {
   };
 
   const initialiseStreamAndChat = () => {
+    console.log('initialiseStreamAndChat called!');
     console.log('Initialising stream and chat with URLs:', { youtubeUrl, twitchUrl });
 
     const ytId = extractYoutubeId(youtubeUrl);
@@ -98,6 +107,7 @@ const StreamViewer: React.FC = () => {
   const isValidYoutube = youtubeUrl.trim() !== '' && extractYoutubeId(youtubeUrl) !== null;
   const isValidTwitch = twitchUrl.trim() !== '' && extractTwitchChannel(twitchUrl) !== null;
   const canLoadStream = isValidYoutube && isValidTwitch;
+  console.log('canLoadStream:', canLoadStream);
 
 
   // Fullscreen functionality
@@ -233,7 +243,10 @@ const StreamViewer: React.FC = () => {
                 <input
                   type="url"
                   value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  onChange={(e) => {
+                    setYoutubeUrl(e.target.value);
+                    console.log('YouTube URL changed:', e.target.value);
+                  }}
                   placeholder="https://youtube.com/watch?v=..."
                   className={`w-full px-3 py-2 bg-gray-700 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                     youtubeUrl && !isValidYoutube
@@ -253,7 +266,10 @@ const StreamViewer: React.FC = () => {
                   <input
                     type="url"
                     value={twitchUrl}
-                    onChange={(e) => setTwitchUrl(e.target.value)}
+                    onChange={(e) => {
+                      setTwitchUrl(e.target.value);
+                      console.log('Twitch URL changed:', e.target.value);
+                    }}
                     placeholder="https://twitch.tv/channel_name"
                     className={`w-full px-3 py-2 bg-gray-700 border rounded-lg focus:outline-none focus:ring-2 transition-colors ${
                       twitchUrl && !isValidTwitch
@@ -323,14 +339,7 @@ const StreamViewer: React.FC = () => {
             style={{ width: `${chatWidth}px` }}
           >
             <div className="flex-1">
-              <iframe
-                src={`https://www.twitch.tv/embed/${activeTwitchChannel}/chat?parent=${window.location.hostname}&darkpopout=true`}
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                scrolling="no"
-                className="w-full h-full"
-              ></iframe>
+              <TwitchChat channel={activeTwitchChannel} />
             </div>
           </div>
         </div>
