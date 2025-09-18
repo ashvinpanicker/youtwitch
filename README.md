@@ -1,31 +1,26 @@
 # YouTwitch
 
-YouTwitch is a web application that provides a streaming experience similar to popular platforms like Twitch and YouTube. It allows users to watch live streams, interact with a chat, and view stream details.
+Watch Youtube Streams with Twitch Chat. The best of both worlds.
 
-## Screenshot
+## Why use this?
+
+This application works best when a streamer is streaming on both Twitch and Youtube.
+
+*   Youtube has Higher resolution, playback speed, closed captions, rewind etc.
+*   Twitch chat degeneracy is better than youtube live chat.
+
 
 Here's a glimpse of the YouTwitch application in action:
 
 ![YouTwitch Screenshot](public/youtwitch-app.png)
 
-_Note: Please place the screenshot image file named `youtwitch-screenshot.png` in a `docs/` directory at the root of the project._
 
-## Features
-
-Based on the provided screenshot, YouTwitch appears to offer the following features:
-
-*   **Live Stream Playback:** Displays a live video stream with playback controls (play/pause, volume, progress bar).
-*   **Quality Selection:** Users can select different video qualities (e.g., 2160p60 4K, 1440p60 HD, 1080p60 HD, 720p60, 480p, 360p, 240p, 144p, Auto).
-*   **Stream Chat:** A real-time chat interface for viewers to interact with each other and the streamer.
-*   **Stream Information:** Displays stream title (e.g., "[EN] Grand Final Day - The International 2025"), viewer count, and other relevant details.
-*   **"Watch Later" and "Share" Options:** Buttons for common video platform functionalities.
-*   **YouTube Integration:** Indicated by the YouTube logo in the player controls, suggesting potential integration or a similar player experience.
-*   **Slow Mode in Chat:** A feature to moderate chat speed.
-*   **Redeemed Highlight Message:** A chat feature where users can highlight messages.
+## Brave Browser Users
+If you are using Brave browser, you will need to turn off shields to log in to Twitch chat.
 
 ## Project Structure
 
-The project is built with a React frontend, likely using TypeScript, and includes common web development tools:
+The project is built with a React frontend, using TypeScript, and includes common web development tools:
 
 *   **`index.html`**: The main HTML file for the application.
 *   **`src/`**: Contains the main source code for the React application.
@@ -96,6 +91,7 @@ This will start the Vite development server, usually accessible at `http://local
 ## Usage
 
 Once the development server is running, open your browser and navigate to the provided local address (e.g., `http://localhost:5173`). You should see the YouTwitch application with a live stream viewer and chat interface.
+
 
 ## License
 
