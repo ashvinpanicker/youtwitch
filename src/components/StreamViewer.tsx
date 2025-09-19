@@ -338,7 +338,7 @@ const StreamViewer: React.FC = () => {
             className={`bg-background border-l border-gray-700 flex flex-col`}
             style={{ width: `${chatWidth}px` }}
           >
-            <div className="flex-1">
+            <div className="flex-1 h-full">
               <TwitchChat channel={activeTwitchChannel} />
             </div>
           </div>
