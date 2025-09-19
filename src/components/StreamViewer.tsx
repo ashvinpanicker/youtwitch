@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ExternalLink, Maximize, Minimize, ChevronUp, ChevronDown } from 'lucide-react';
 
 
@@ -11,9 +11,9 @@ const StreamViewer: React.FC = () => {
   const [chatWidth, setChatWidth] = useState(320);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [mouseTimer, setMouseTimer] = useState<NodeJS.Timeout | null>(null);
+  const mouseTimer = useRef<NodeJS.Timeout | null>(null);
   const [showToggleButton, setShowToggleButton] = useState(false);
-  const [toggleButtonTimer, setToggleButtonTimer] = useState<NodeJS.Timeout | null>(null);
+  const toggleButtonTimer = useRef<NodeJS.Timeout | null>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -126,8 +126,8 @@ const StreamViewer: React.FC = () => {
 
   // Mouse activity tracking for auto-hide controls
   const resetMouseTimer = useCallback(() => {
-    if (mouseTimer) {
-      clearTimeout(mouseTimer);
+    if (mouseTimer.current) {
+      clearTimeout(mouseTimer.current);
     }
 
     setShowControls(true);
@@ -136,9 +136,9 @@ const StreamViewer: React.FC = () => {
       const timer = setTimeout(() => {
         setShowControls(false);
       }, 5000);
-      setMouseTimer(timer);
+      mouseTimer.current = timer;
     }
-  }, [mouseTimer, activeYoutubeId, activeTwitchChannel]);
+  }, [activeYoutubeId, activeTwitchChannel]);
 
   useEffect(() => {
     if (activeYoutubeId && activeTwitchChannel) {
@@ -150,9 +150,9 @@ const StreamViewer: React.FC = () => {
       resetMouseTimer();
     } else {
       setShowControls(true);
-      if (mouseTimer) {
-        clearTimeout(mouseTimer);
-        setMouseTimer(null);
+      if (mouseTimer.current) {
+        clearTimeout(mouseTimer.current);
+        mouseTimer.current = null;
       }
     }
 
@@ -160,35 +160,35 @@ const StreamViewer: React.FC = () => {
       document.removeEventListener('mousemove', resetMouseTimer);
       document.removeEventListener('mousedown', resetMouseTimer);
       document.removeEventListener('keydown', resetMouseTimer);
-      if (mouseTimer) {
-        clearTimeout(mouseTimer);
+      if (mouseTimer.current) {
+        clearTimeout(mouseTimer.current);
       }
     };
-  }, [activeYoutubeId, activeTwitchChannel, resetMouseTimer, mouseTimer]);
+  }, [activeYoutubeId, activeTwitchChannel, resetMouseTimer]);
 
   // Mouse activity tracking for toggle button auto-hide
   useEffect(() => {
     const handleMouseMove = (event: MouseEvent) => {
       if (event.clientY < 100) { // If mouse is within 100px of the top
         setShowToggleButton(true);
-        if (toggleButtonTimer) {
-          clearTimeout(toggleButtonTimer);
+        if (toggleButtonTimer.current) {
+          clearTimeout(toggleButtonTimer.current);
         }
         const timer = setTimeout(() => {
           setShowToggleButton(false);
         }, 5000);
-        setToggleButtonTimer(timer);
+        toggleButtonTimer.current = timer;
       }
     };
 
     document.addEventListener('mousemove', handleMouseMove);
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
-      if (toggleButtonTimer) {
-        clearTimeout(toggleButtonTimer);
+      if (toggleButtonTimer.current) {
+        clearTimeout(toggleButtonTimer.current);
       }
     };
-  }, [toggleButtonTimer]);
+  }, []);
 
   const headerHeight = isHeaderVisible && showControls ? '140px' : '0px';
   const mainHeight = `calc(100vh - ${headerHeight})`;
