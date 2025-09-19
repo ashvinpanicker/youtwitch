@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import tmi from 'tmi.js';
+import { StaticAuthProvider } from '@twurple/auth';
+import { ApiClient } from '@twurple/api';
+import { EmoteFetcher, EmoteParser } from '@mkody/twitch-emoticons';
 
 interface TwitchChatProps {
   channel: string;
@@ -12,13 +15,54 @@ interface ChatMessage {
   color?: string;
 }
 
+// TODO: Replace with your actual Twitch API client ID and client secret
+const TWITCH_CLIENT_ID = 'YOUR_TWITCH_CLIENT_ID';
+const TWITCH_CLIENT_SECRET = 'YOUR_TWITCH_CLIENT_SECRET';
+
+const authProvider = new StaticAuthProvider(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET);
+const apiClient = new ApiClient({ authProvider });
+
+// Initialize EmoteFetcher and EmoteParser outside the component to avoid re-initialization
+const emoteFetcher = new EmoteFetcher(apiClient);
+const emoteParser = new EmoteParser(emoteFetcher, {
+  template: '<img class="inline-block" src="{url}" alt="{code}" />',
+});
+
 const TwitchChat: React.FC<TwitchChatProps> = ({ channel }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [globalEmotes, setGlobalEmotes] = useState<any[]>([]);
+  const [channelEmotes, setChannelEmotes] = useState<any[]>([]);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const clientRef = useRef<tmi.Client | null>(null);
 
   useEffect(() => {
     if (!channel) return;
+
+    const fetchEmotes = async () => {
+      try {
+        // Fetch global BTTV emotes
+        const fetchedGlobalEmotes = await emoteFetcher.fetchBTTVEmotes();
+        setGlobalEmotes(Array.from(fetchedGlobalEmotes.values()));
+        console.log('Fetched global BTTV emotes:', fetchedGlobalEmotes);
+
+        // Fetch channel-specific BTTV emotes
+        const twitchUser = await apiClient.users.getUserByName(channel);
+        if (twitchUser) {
+          const fetchedChannelEmotes = await emoteFetcher.fetchBTTVEmotes(Number(twitchUser.id)); // Convert to number
+          setChannelEmotes(Array.from(fetchedChannelEmotes.values()));
+          console.log(`Fetched BTTV emotes for channel ${channel}:`, fetchedChannelEmotes);
+        } else {
+          console.warn(`Could not find Twitch user for channel: ${channel}`);
+        }
+
+        // Add emotes to the parser
+
+      } catch (error) {
+        console.error('Error fetching BTTV emotes:', error);
+      }
+    };
+
+    fetchEmotes();
 
     // Disconnect existing client if channel changes
     if (clientRef.current) {
@@ -40,7 +84,7 @@ const TwitchChat: React.FC<TwitchChatProps> = ({ channel }) => {
 
       setMessages((prevMessages) => [
         ...prevMessages,
-        { id: tags.id || Date.now().toString(), user, message, color },
+        { id: tags.id || Date.now().toString(), user, message: emoteParser.parse(message), color },
       ]);
     });
 
@@ -96,7 +140,7 @@ const TwitchChat: React.FC<TwitchChatProps> = ({ channel }) => {
             <span style={{ color: msg.color }} className="font-bold mr-1">
               {msg.user}:
             </span>
-            <span>{msg.message}</span>
+            <span dangerouslySetInnerHTML={{ __html: msg.message }} />
           </div>
         ))}
       </div>
