@@ -14,6 +14,26 @@ Here's a glimpse of the YouTwitch application in action:
 
 ![YouTwitch Screenshot](public/youtwitch-app.png)
 
+## ⚡ Direct URL Access & Shortcuts
+
+You can directly load or bookmark any stream combination using URL path routes or query parameters:
+
+- **Direct Path:** `https://youtwitch.pages.dev/<youtube_id_or_url>/<twitch_channel>`
+  - Example: `https://youtwitch.pages.dev/dQw4w9WgXcQ/tarik`
+  - Flexible order: `https://youtwitch.pages.dev/tarik/dQw4w9WgXcQ`
+- **Streamer Handle:** `https://youtwitch.pages.dev/<streamer_name>`
+  - Example: `https://youtwitch.pages.dev/tarik`
+- **Query Parameters:**
+  - `https://youtwitch.pages.dev/?yt=dQw4w9WgXcQ&tw=shroud`
+  - `https://youtwitch.pages.dev/?streamer=ludwig`
+
+## 🔍 Streamer Quick Finder & Presets
+
+- **⌘K / Ctrl+K Quick Finder:** Search any streamer name, browse popular multi-streamers (Tarik, Ludwig, Pirate Software, TimTheTatman, xQc, etc.), and quickly jump to their YouTube Live search or load their Twitch chat with one click.
+- **1-Click Link Sharing:** Click the **Share** button on any active stream to copy a clean direct link to share with friends.
+- **Recent Stream History & Favorites:** Automatically saves your recently viewed stream pairs with quick reload and favorite pinning.
+
+
 
 ## Brave Browser Users
 If you are using Brave browser, you will need to turn off shields to log in to Twitch chat.
