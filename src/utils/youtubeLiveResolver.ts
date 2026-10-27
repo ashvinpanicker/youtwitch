@@ -1,11 +1,8 @@
 import { extractYoutubeId, extractYoutubeHandle, extractYoutubeChannelId } from './urlParser';
+import { PresetStreamer } from '../types/stream';
 import { parseYoutubeLivePage, YoutubeLiveLookup, YOUTUBE_CHANNEL_TARGET } from './parseYoutubeLivePage';
 
-export interface ResolvedYoutubeStream {
-  videoId: string | null;
-  isLive: boolean;
-  title?: string | null;
-}
+export type ResolvedYoutubeStream = YoutubeLiveLookup;
 
 const fetchWithTimeout = (url: string, ms: number) => fetch(url, { signal: AbortSignal.timeout(ms) });
 
@@ -55,5 +52,14 @@ export async function resolveYoutubeLiveStream(input: string): Promise<ResolvedY
   return { videoId: null, isLive: false };
 }
 
+/** Only a stream that is live right now counts; ended or scheduled videos are treated as offline */
 const toResult = (lookup: YoutubeLiveLookup): ResolvedYoutubeStream =>
-  lookup.isLive && lookup.videoId ? { videoId: lookup.videoId, isLive: true, title: lookup.title } : { videoId: null, isLive: false };
+  lookup.isLive && lookup.videoId
+    ? lookup
+    : { videoId: null, isLive: false, channelName: lookup.channelName, avatarUrl: lookup.avatarUrl };
+
+/** The YouTube channel path we look a streamer's live video up from */
+export const streamerYoutubeTarget = (streamer: PresetStreamer): string | null =>
+  streamer.youtubeChannelId
+    ? `channel/${streamer.youtubeChannelId}`
+    : toYoutubeChannelTarget(streamer.youtubeHandle || streamer.youtubeChannelName);

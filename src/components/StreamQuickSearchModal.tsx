@@ -6,6 +6,7 @@ import { PresetStreamer, StreamHistoryItem } from '../types/stream';
 import { generateYoutubeLiveSearchUrl, extractTwitchChannel } from '../utils/urlParser';
 import { useFocusTrap } from '../hooks/useFocusTrap';
 import { StreamerTile } from './StreamerTile';
+import { LiveStatusMap } from '../hooks/useLiveStatus';
 
 interface StreamQuickSearchModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface StreamQuickSearchModalProps {
   favorites: string[];
   onToggleFavorite: (channel: string) => void;
   currentTwitchChannel?: string | null;
+  liveStatus: LiveStatusMap;
 }
 
 const matches = (s: PresetStreamer, q: string) =>
@@ -50,6 +52,7 @@ const ModalContent: React.FC<StreamQuickSearchModalProps> = ({
   favorites,
   onToggleFavorite,
   currentTwitchChannel,
+  liveStatus,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -63,12 +66,18 @@ const ModalContent: React.FC<StreamQuickSearchModalProps> = ({
       .map((c) => findPresetByChannel(c) || { name: c, twitchChannel: c, youtubeChannelName: c, youtubeHandle: c })
       .filter((s) => !q || matches(s, q));
     const notFav = (s: PresetStreamer) => !favorites.includes(s.twitchChannel.toLowerCase());
+    const viewers = (s: PresetStreamer) => {
+      const live = liveStatus.byChannel[s.twitchChannel.toLowerCase()];
+      return live?.isLive ? (live.viewers ?? 0) + 1 : 0;
+    };
+    // Live streamers first, most watched first (stable for everyone else)
+    const liveFirst = (items: PresetStreamer[]) => [...items].sort((a, b) => viewers(b) - viewers(a));
     return [
-      { id: 'favorites', title: 'Favourites', items: favoriteStreamers },
-      { id: 'dota', title: 'Dota 2', items: DOTA_STREAMERS.filter((s) => notFav(s) && (!q || matches(s, q))) },
-      { id: 'more', title: 'More multistreamers', items: VARIETY_STREAMERS.filter((s) => notFav(s) && (!q || matches(s, q))) },
+      { id: 'favorites', title: 'Favourites', items: liveFirst(favoriteStreamers) },
+      { id: 'dota', title: 'Dota 2', items: liveFirst(DOTA_STREAMERS.filter((s) => notFav(s) && (!q || matches(s, q)))) },
+      { id: 'more', title: 'More multistreamers', items: liveFirst(VARIETY_STREAMERS.filter((s) => notFav(s) && (!q || matches(s, q)))) },
     ].filter((section) => section.items.length > 0);
-  }, [favorites, q]);
+  }, [favorites, q, liveStatus]);
 
   const recent = useMemo(
     () =>
@@ -185,6 +194,7 @@ const ModalContent: React.FC<StreamQuickSearchModalProps> = ({
                     streamer={streamer}
                     isFavorite={favorites.includes(streamer.twitchChannel.toLowerCase())}
                     isActive={currentTwitchChannel?.toLowerCase() === streamer.twitchChannel.toLowerCase()}
+                    live={liveStatus.byChannel[streamer.twitchChannel.toLowerCase()]}
                     onSelect={onSelectStreamer}
                     onToggleFavorite={onToggleFavorite}
                   />

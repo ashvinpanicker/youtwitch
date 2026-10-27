@@ -33,6 +33,7 @@ You can directly load or bookmark any stream combination using URL path routes o
 - **Dota 2 picks:** ESL, PGL and BLAST tournament channels plus Gorgc, BSJ and Purge are suggested alongside your favourites.
 - **⌘K / Ctrl+K or `/` Quick Finder:** Search streamers, or type any Twitch channel to watch it. Use ↑/↓ and Enter to pick one.
 - **Minimal watch view:** The toolbar hides itself while you watch (move to the top edge to bring it back, or pin it). Drag the divider, or focus it and use the arrow keys, to resize the chat.
+- **Live now, Twitch-style:** The home screen and offline screen show who's live, with YouTube live thumbnails, viewer counts, titles and channel avatars. While you watch, a bar under the player shows the stream title, category, viewers and uptime.
 - **Live link lookup:** YouTube gives every stream a new video link, so `/api/live` (a Vercel function, also served by the Vite dev server) finds the channel's current live video each time you open a streamer. If they're offline it keeps checking every minute, and you can paste a YouTube link instead. The clipboard button in the toolbar does the same when a video won't play.
 - **1-Click Link Sharing:** Copy a clean direct link to the current stream from the toolbar.
 
