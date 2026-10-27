@@ -27,6 +27,10 @@ import {
 import { POPULAR_MULTISTREAMERS, findPresetByChannel } from '../utils/presets';
 import { PresetStreamer, StreamHistoryItem } from '../types/stream';
 import { resolveYoutubeLiveStream, toYoutubeChannelTarget } from '../utils/youtubeLiveResolver';
+import { YoutubeLiveLookup } from '../utils/parseYoutubeLivePage';
+import { useLiveStatus } from '../hooks/useLiveStatus';
+import { StreamInfoBar } from './StreamInfoBar';
+import { LiveEntry } from './LiveStreamCard';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { StreamQuickSearchModal } from './StreamQuickSearchModal';
@@ -90,6 +94,8 @@ const StreamViewer: React.FC = () => {
   /** Channel we look the live video up from (`@handle` or `channel/UC…`); null when a specific video was pasted */
   const [youtubeSource, setYoutubeSource] = useState<string | null>(null);
   const [youtubeStatus, setYoutubeStatus] = useState<YoutubeStatus>('idle');
+  /** Details from the last live lookup for the active streamer (title, viewers, avatar) */
+  const [currentStream, setCurrentStream] = useState<YoutubeLiveLookup | null>(null);
   const [chatWidth, setChatWidth] = useState(loadChatWidth);
   const [isChatHidden, setIsChatHidden] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -102,7 +108,7 @@ const StreamViewer: React.FC = () => {
   const [isToolbarRevealed, setIsToolbarRevealed] = useState(true);
   const [isToolbarEngaged, setIsToolbarEngaged] = useState(false);
 
-  const { favorites, toggleFavorite } = useFavorites();
+  const { favorites, toggleFavorite, isFavorite } = useFavorites();
   const canHover = useMediaQuery('(min-width: 768px) and (hover: hover)');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -126,6 +132,32 @@ const StreamViewer: React.FC = () => {
       ),
     [favorites]
   );
+
+  // Live status for every streamer we can suggest, so cards can show LIVE badges and thumbnails
+  const statusStreamers = useMemo(() => {
+    const seen = new Set<string>();
+    return [...favoriteStreamers, ...POPULAR_MULTISTREAMERS].filter((s) => {
+      const key = s.twitchChannel.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [favoriteStreamers]);
+  const liveStatus = useLiveStatus(statusStreamers);
+  const liveEntries = useMemo<LiveEntry[]>(
+    () =>
+      statusStreamers
+        .map((streamer) => ({ streamer, live: liveStatus.byChannel[streamer.twitchChannel.toLowerCase()] }))
+        .filter((entry): entry is LiveEntry => !!entry.live?.isLive)
+        .sort((a, b) => (b.live.viewers ?? 0) - (a.live.viewers ?? 0)),
+    [statusStreamers, liveStatus]
+  );
+
+  const activeStreamer = activeTwitchChannel ? streamerForChannel(activeTwitchChannel) : null;
+  const listedStatus = activeTwitchChannel ? liveStatus.byChannel[activeTwitchChannel.toLowerCase()] : undefined;
+  // Prefer the periodically refreshed status (fresher viewer count) when it's for the video we're playing
+  const streamDetails = [listedStatus, currentStream].find((d) => d?.videoId && d.videoId === activeYoutubeId) ?? null;
+  const activeAvatar = streamDetails?.avatarUrl ?? currentStream?.avatarUrl ?? listedStatus?.avatarUrl ?? null;
 
   const saveHistory = (items: StreamHistoryItem[]) => {
     setHistory(items);
@@ -161,6 +193,7 @@ const StreamViewer: React.FC = () => {
       lookupRequest.current++; // cancel any pending live lookup
       setYoutubeSource(null);
       setYoutubeStatus('live');
+      setCurrentStream(null);
       setActiveYoutubeId(ytId);
       setActiveTwitchChannel(channel);
       setYoutubeUrl(`https://youtube.com/watch?v=${ytId}`);
@@ -179,6 +212,7 @@ const StreamViewer: React.FC = () => {
       if (!silent) setYoutubeStatus('resolving');
       const resolved = await resolveYoutubeLiveStream(source);
       if (request !== lookupRequest.current) return;
+      setCurrentStream(resolved);
       if (resolved.videoId) {
         setActiveYoutubeId(resolved.videoId);
         setYoutubeStatus('live');
@@ -202,6 +236,7 @@ const StreamViewer: React.FC = () => {
       setIsSourcesOpen(false);
       setActiveTwitchChannel(channel);
       setActiveYoutubeId(null);
+      setCurrentStream(null);
       setYoutubeSource(source);
       if (source) lookupLive(source, channel, streamer.name);
       else setYoutubeStatus('offline');
@@ -380,6 +415,7 @@ const StreamViewer: React.FC = () => {
     setActiveTwitchChannel(null);
     setYoutubeSource(null);
     setYoutubeStatus('idle');
+    setCurrentStream(null);
     setIsSourcesOpen(false);
     window.history.pushState({}, '', '/');
     document.title = 'YouTwitch: YouTube Stream + Twitch Chat';
@@ -467,6 +503,7 @@ const StreamViewer: React.FC = () => {
         favorites={favorites}
         onToggleFavorite={toggleFavorite}
         currentTwitchChannel={activeTwitchChannel}
+        liveStatus={liveStatus}
       />
 
       {/* Thin hot zone over the iframes that brings the toolbar back */}
@@ -499,7 +536,7 @@ const StreamViewer: React.FC = () => {
 
           {isWatching && (
             <div className="flex items-center gap-2 min-w-0 pl-2 sm:ml-1 sm:border-l border-white/10">
-              {currentStreamer && <StreamerAvatar streamer={currentStreamer} size="sm" />}
+              {activeStreamer && <StreamerAvatar streamer={activeStreamer} size="sm" avatarUrl={activeAvatar} isLive={!!streamDetails?.isLive} />}
               <span className="text-sm font-medium truncate">{currentName}</span>
             </div>
           )}
@@ -519,7 +556,11 @@ const StreamViewer: React.FC = () => {
                       isActive ? 'text-white bg-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'
                     }`}
                   >
+                    {liveStatus.byChannel[s.twitchChannel.toLowerCase()]?.isLive && (
+                      <span className="inline-block w-1.5 h-1.5 mr-1.5 mb-px rounded-full bg-red-500" aria-hidden="true" />
+                    )}
                     {s.name}
+                    {liveStatus.byChannel[s.twitchChannel.toLowerCase()]?.isLive && <span className="sr-only"> (live)</span>}
                   </button>
                 );
               })}
@@ -641,24 +682,39 @@ const StreamViewer: React.FC = () => {
       <main id="main" tabIndex={-1} className="flex-1 flex flex-col min-h-0 focus:outline-none">
         {isWatching ? (
           <div className="flex-1 flex flex-col md:flex-row min-h-0">
-            <div className="bg-black w-full aspect-video max-h-[60dvh] md:max-h-none md:aspect-auto md:flex-1 shrink-0 md:shrink">
-              {activeYoutubeId ? (
-                <iframe
-                  key={youtubeEmbedSrc}
-                  src={youtubeEmbedSrc}
-                  title={`${currentName} YouTube stream`}
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                  allowFullScreen
-                  className="w-full h-full border-0"
-                />
-              ) : (
-                <VideoFallback
-                  name={currentName}
-                  isResolving={isResolvingLive}
-                  livePageUrl={youtubeLivePageUrl}
-                  onSubmitLink={playYoutubeLink}
-                  onPasteFromClipboard={pasteYoutubeLinkFromClipboard}
-                  onRetry={youtubeSource ? () => lookupLive(youtubeSource, activeTwitchChannel, currentName) : undefined}
+            <div className="flex flex-col w-full shrink-0 md:shrink md:flex-1 md:min-w-0 md:min-h-0">
+              <div className="bg-black w-full aspect-video max-h-[60dvh] md:max-h-none md:aspect-auto md:flex-1 md:min-h-0">
+                {activeYoutubeId ? (
+                  <iframe
+                    key={youtubeEmbedSrc}
+                    src={youtubeEmbedSrc}
+                    title={`${currentName} YouTube stream`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="w-full h-full border-0"
+                  />
+                ) : (
+                  <VideoFallback
+                    streamer={activeStreamer!}
+                    avatarUrl={activeAvatar}
+                    liveSuggestions={liveEntries.filter((e) => e.streamer.twitchChannel.toLowerCase() !== activeTwitchChannel.toLowerCase())}
+                    thumbnailKey={liveStatus.fetchedAt}
+                    onSelectStreamer={loadStreamer}
+                    isResolving={isResolvingLive}
+                    livePageUrl={youtubeLivePageUrl}
+                    onSubmitLink={playYoutubeLink}
+                    onPasteFromClipboard={pasteYoutubeLinkFromClipboard}
+                    onRetry={youtubeSource ? () => lookupLive(youtubeSource, activeTwitchChannel, currentName) : undefined}
+                  />
+                )}
+              </div>
+              {activeStreamer && (
+                <StreamInfoBar
+                  streamer={activeStreamer}
+                  live={streamDetails}
+                  avatarUrl={activeAvatar}
+                  isFavorite={isFavorite(activeStreamer.twitchChannel)}
+                  onToggleFavorite={toggleFavorite}
                 />
               )}
             </div>
@@ -681,6 +737,8 @@ const StreamViewer: React.FC = () => {
           </div>
         ) : (
           <WelcomeScreen
+            liveStatus={liveStatus}
+            liveEntries={liveEntries}
             favoriteStreamers={favoriteStreamers}
             favorites={favorites}
             onSelect={loadStreamer}

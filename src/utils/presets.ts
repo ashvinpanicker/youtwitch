@@ -236,3 +236,15 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [...DOTA_STREAMERS, ...V
 
 export const findPresetByChannel = (channel?: string | null): PresetStreamer | undefined =>
   channel ? POPULAR_MULTISTREAMERS.find((p) => p.twitchChannel.toLowerCase() === channel.toLowerCase()) : undefined;
+
+/**
+ * Twitch-style category label. YouTube only reports "Gaming" for games, so Dota streamers get
+ * "Dota 2"; tournament channels also run other games, so for them it depends on the title.
+ */
+export const streamCategory = (
+  streamer: PresetStreamer | undefined,
+  live?: { category?: string | null; title?: string | null } | null
+): string | null => {
+  const isDota = streamer?.category === 'dota' && (!streamer.isEvent || /dota|\bti\b|the international/i.test(live?.title || ''));
+  return isDota ? 'Dota 2' : live?.category || null;
+};

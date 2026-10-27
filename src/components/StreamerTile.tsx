@@ -1,17 +1,59 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { m } from 'motion/react';
 import { ExternalLink, Star } from 'lucide-react';
 import { PresetStreamer } from '../types/stream';
+import { YoutubeLiveLookup } from '../utils/parseYoutubeLivePage';
 import { generateYoutubeChannelLiveUrl } from '../utils/urlParser';
+import { formatViewers } from '../hooks/useLiveStatus';
 
-export const StreamerAvatar: React.FC<{ streamer: PresetStreamer; size?: 'sm' | 'md' }> = ({ streamer, size = 'md' }) => (
-  <span
-    aria-hidden="true"
-    className={`${size === 'sm' ? 'w-6 h-6 text-[9px] rounded-md' : 'w-9 h-9 text-[11px] rounded-lg'} bg-gradient-to-tr ${
-      streamer.color || 'from-purple-600 to-red-600'
-    } flex items-center justify-center font-bold text-white shrink-0`}
-  >
-    {streamer.avatarText || streamer.name.substring(0, 2).toUpperCase()}
+const AVATAR_SIZES = {
+  sm: 'w-6 h-6 text-[9px]',
+  md: 'w-9 h-9 text-[11px]',
+  lg: 'w-12 h-12 text-sm',
+  xl: 'w-20 h-20 text-xl',
+} as const;
+
+interface StreamerAvatarProps {
+  streamer: PresetStreamer;
+  size?: keyof typeof AVATAR_SIZES;
+  avatarUrl?: string | null;
+  /** Red Twitch-style ring while live */
+  isLive?: boolean;
+}
+
+export const StreamerAvatar: React.FC<StreamerAvatarProps> = ({ streamer, size = 'md', avatarUrl, isLive }) => {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
+  const ring = isLive ? 'ring-2 ring-red-500 ring-offset-2 ring-offset-background' : '';
+  const base = `${AVATAR_SIZES[size]} rounded-full shrink-0 ${ring}`;
+
+  if (avatarUrl && failedUrl !== avatarUrl) {
+    return (
+      <img
+        src={avatarUrl}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        referrerPolicy="no-referrer"
+        onError={() => setFailedUrl(avatarUrl)}
+        className={`${base} object-cover bg-white/5`}
+      />
+    );
+  }
+
+  return (
+    <span
+      aria-hidden="true"
+      className={`${base} bg-gradient-to-tr ${streamer.color || 'from-purple-600 to-red-600'} flex items-center justify-center font-bold text-white`}
+    >
+      {streamer.avatarText || streamer.name.substring(0, 2).toUpperCase()}
+    </span>
+  );
+};
+
+export const LiveBadge: React.FC<{ viewers?: number | null; className?: string }> = ({ viewers, className = '' }) => (
+  <span className={`inline-flex items-center gap-1 shrink-0 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-px rounded bg-red-600 text-white ${className}`}>
+    Live
+    {viewers != null && <span className="font-medium normal-case tracking-normal">· {formatViewers(viewers)}</span>}
   </span>
 );
 
@@ -24,12 +66,14 @@ interface StreamerTileProps {
   streamer: PresetStreamer;
   isFavorite: boolean;
   isActive?: boolean;
+  live?: YoutubeLiveLookup;
   onSelect: (streamer: PresetStreamer) => void;
   onToggleFavorite: (channel: string) => void;
 }
 
-export const StreamerTile: React.FC<StreamerTileProps> = ({ streamer, isFavorite, isActive, onSelect, onToggleFavorite }) => {
+export const StreamerTile: React.FC<StreamerTileProps> = ({ streamer, isFavorite, isActive, live, onSelect, onToggleFavorite }) => {
   const handle = streamer.youtubeHandle || streamer.youtubeChannelName;
+  const isLive = !!live?.isLive;
 
   return (
     <m.li variants={tileVariants} className="relative group">
@@ -44,19 +88,25 @@ export const StreamerTile: React.FC<StreamerTileProps> = ({ streamer, isFavorite
             : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] hover:border-white/15'
         }`}
       >
-        <StreamerAvatar streamer={streamer} />
+        <StreamerAvatar streamer={streamer} avatarUrl={live?.avatarUrl} isLive={isLive} />
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 text-sm font-semibold text-white">
             <span className="truncate">{streamer.name}</span>
-            {streamer.isEvent && (
-              <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-1.5 py-px rounded bg-white/10 text-gray-300">
-                Event
-              </span>
+            {isLive ? (
+              <LiveBadge viewers={live?.viewers} />
+            ) : (
+              streamer.isEvent && (
+                <span className="shrink-0 text-[10px] font-medium uppercase tracking-wide px-1.5 py-px rounded bg-white/10 text-gray-300">
+                  Event
+                </span>
+              )
             )}
           </span>
-          <span className="block text-xs text-gray-400 truncate">{streamer.description || `@${streamer.twitchChannel}`}</span>
+          <span className="block text-xs text-gray-400 truncate">
+            {(isLive && live?.title) || streamer.description || `@${streamer.twitchChannel}`}
+          </span>
         </span>
-        <span className="sr-only">, watch YouTube stream with Twitch chat</span>
+        <span className="sr-only">{isLive ? ', live now' : ''}, watch YouTube stream with Twitch chat</span>
       </button>
 
       <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">

@@ -4,8 +4,13 @@ import { Search } from 'lucide-react';
 import { PresetStreamer } from '../types/stream';
 import { DOTA_STREAMERS, VARIETY_STREAMERS } from '../utils/presets';
 import { StreamerTile } from './StreamerTile';
+import { LiveEntry, LiveStreamCard } from './LiveStreamCard';
+import { LiveStatusMap } from '../hooks/useLiveStatus';
 
 interface WelcomeScreenProps {
+  liveStatus: LiveStatusMap;
+  /** Streamers live right now, most watched first */
+  liveEntries: LiveEntry[];
   favoriteStreamers: PresetStreamer[];
   favorites: string[];
   onSelect: (streamer: PresetStreamer) => void;
@@ -22,9 +27,10 @@ const Section: React.FC<{
   hint?: string;
   streamers: PresetStreamer[];
   favorites: string[];
+  liveStatus: LiveStatusMap;
   onSelect: (streamer: PresetStreamer) => void;
   onToggleFavorite: (channel: string) => void;
-}> = ({ id, title, hint, streamers, favorites, onSelect, onToggleFavorite }) => {
+}> = ({ id, title, hint, streamers, favorites, liveStatus, onSelect, onToggleFavorite }) => {
   if (streamers.length === 0) return null;
   return (
     <section aria-labelledby={id}>
@@ -40,6 +46,7 @@ const Section: React.FC<{
             key={s.twitchChannel}
             streamer={s}
             isFavorite={favorites.includes(s.twitchChannel.toLowerCase())}
+            live={liveStatus.byChannel[s.twitchChannel.toLowerCase()]}
             onSelect={onSelect}
             onToggleFavorite={onToggleFavorite}
           />
@@ -50,6 +57,8 @@ const Section: React.FC<{
 };
 
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
+  liveStatus,
+  liveEntries,
   favoriteStreamers,
   favorites,
   onSelect,
@@ -57,8 +66,10 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onOpenSearch,
   children,
 }) => {
-  const notFavorite = (s: PresetStreamer) => !favorites.includes(s.twitchChannel.toLowerCase());
-  const shared = { favorites, onSelect, onToggleFavorite };
+  const isLive = (s: PresetStreamer) => !!liveStatus.byChannel[s.twitchChannel.toLowerCase()]?.isLive;
+  // Live streamers already have a card in "Live now"
+  const notFavorite = (s: PresetStreamer) => !favorites.includes(s.twitchChannel.toLowerCase()) && !isLive(s);
+  const shared = { favorites, liveStatus, onSelect, onToggleFavorite };
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8 sm:py-14 space-y-10">
@@ -82,6 +93,27 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <kbd className="kbd hidden sm:inline-block">⌘K</kbd>
         </button>
       </m.div>
+
+      {liveEntries.length > 0 && (
+        <section aria-labelledby="welcome-live">
+          <div className="flex items-center gap-2 mb-3 px-1">
+            <span className="w-2 h-2 rounded-full bg-red-500" aria-hidden="true" />
+            <h2 id="welcome-live" className="text-xs font-semibold uppercase tracking-wider text-gray-300">
+              Live now
+            </h2>
+          </div>
+          <m.ul
+            variants={listVariants}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 gap-y-6"
+          >
+            {liveEntries.slice(0, 6).map((entry) => (
+              <LiveStreamCard key={entry.streamer.twitchChannel} {...entry} thumbnailKey={liveStatus.fetchedAt} onSelect={onSelect} />
+            ))}
+          </m.ul>
+        </section>
+      )}
 
       <Section id="welcome-favorites" title="Favourites" hint="Star a streamer to pin it here" streamers={favoriteStreamers} {...shared} />
       <Section id="welcome-dota" title="More Dota 2" streamers={DOTA_STREAMERS.filter(notFavorite)} {...shared} />
