@@ -27,13 +27,13 @@ You can directly load or bookmark any stream combination using URL path routes o
   - `https://youtwitch.pages.dev/?yt=dQw4w9WgXcQ&tw=shroud`
   - `https://youtwitch.pages.dev/?streamer=ludwig`
 
-## 🔍 Streamer Quick Finder & Presets
+## 🔍 Favourites, Dota 2 & Quick Finder
 
-- **⌘K / Ctrl+K Quick Finder:** Search any streamer name, browse popular multi-streamers (Tarik, Ludwig, Pirate Software, TimTheTatman, xQc, etc.), and quickly jump to their YouTube Live search or load their Twitch chat with one click.
-- **1-Click Link Sharing:** Click the **Share** button on any active stream to copy a clean direct link to share with friends.
-- **Recent Stream History & Favorites:** Automatically saves your recently viewed stream pairs with quick reload and favorite pinning.
-
-
+- **Favourites:** Star any streamer to pin them to the home screen and the toolbar for one-click switching. zeeddota and The International (TI) are favourites by default.
+- **Dota 2 picks:** ESL, PGL and BLAST tournament channels plus Gorgc, BSJ and Purge are suggested alongside your favourites.
+- **⌘K / Ctrl+K or `/` Quick Finder:** Search streamers, or type any Twitch channel to watch it. Use ↑/↓ and Enter to pick one.
+- **Minimal watch view:** The toolbar hides itself while you watch (move to the top edge to bring it back, or pin it). Drag the divider, or focus it and use the arrow keys, to resize the chat.
+- **1-Click Link Sharing:** Copy a clean direct link to the current stream from the toolbar.
 
 ## Brave Browser Users
 If you are using Brave browser, you will need to turn off shields to log in to Twitch chat.

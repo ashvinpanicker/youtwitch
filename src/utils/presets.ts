@@ -1,6 +1,9 @@
 import { PresetStreamer } from '../types/stream';
 
-export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
+/** Streamers loaded into favourites the first time someone opens the app */
+export const DEFAULT_FAVORITE_CHANNELS = ['zeeddota', 'dota2ti'];
+
+export const DOTA_STREAMERS: PresetStreamer[] = [
   {
     name: 'zeeddota',
     twitchChannel: 'zeeddota',
@@ -10,7 +13,92 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     avatarText: 'ZD',
     color: 'from-slate-600 to-slate-900',
     description: 'Dota 2 Toxic Indian Tamil Stream',
+    category: 'dota',
   },
+  {
+    name: 'The International',
+    twitchChannel: 'dota2ti',
+    youtubeChannelName: 'dota2',
+    youtubeHandle: 'dota2',
+    youtubeChannelId: 'UCTQKT5QqO3h7y32G8VzuySQ',
+    avatarText: 'TI',
+    color: 'from-red-700 to-zinc-900',
+    description: 'Official TI & Valve broadcasts',
+    category: 'dota',
+    isEvent: true,
+  },
+  {
+    name: 'ESL Dota 2',
+    twitchChannel: 'esl_dota2',
+    youtubeChannelName: 'ESL Dota 2',
+    youtubeHandle: 'esldota2',
+    youtubeChannelId: 'UCaYLBJfw6d8XqmNlL204lNg',
+    avatarText: 'ESL',
+    color: 'from-yellow-500 to-zinc-900',
+    description: 'ESL One & DreamLeague',
+    category: 'dota',
+    isEvent: true,
+  },
+  {
+    name: 'PGL Dota 2',
+    twitchChannel: 'pgl_dota2',
+    youtubeChannelName: 'PGL',
+    youtubeHandle: 'PGL',
+    youtubeChannelId: 'UC5jpxDZx4yoBo324pMQ91Ww',
+    avatarText: 'PGL',
+    color: 'from-sky-600 to-zinc-900',
+    description: 'PGL Wallachia & majors',
+    category: 'dota',
+    isEvent: true,
+  },
+  {
+    name: 'BLAST Dota 2',
+    twitchChannel: 'blastdota',
+    youtubeChannelName: 'BLAST SLAM Dota 2',
+    youtubeHandle: 'BLASTDota',
+    youtubeChannelId: 'UCAvIC2XmBLLXFPdveirTrmw',
+    avatarText: 'BL',
+    color: 'from-orange-500 to-zinc-900',
+    description: 'BLAST Slam tournaments',
+    category: 'dota',
+    isEvent: true,
+  },
+  {
+    name: 'Gorgc',
+    twitchChannel: 'gorgc',
+    youtubeChannelName: 'Gorgc',
+    youtubeHandle: 'Gorgc',
+    youtubeChannelId: 'UCPkaARl89RCckNE_D7tj-aA',
+    avatarText: 'GC',
+    color: 'from-emerald-600 to-zinc-900',
+    description: 'High-MMR pubs & chill',
+    category: 'dota',
+  },
+  {
+    name: 'BSJ',
+    twitchChannel: 'bananaslamjamma',
+    youtubeChannelName: 'BSJ',
+    youtubeHandle: 'bananaslamjamma',
+    youtubeChannelId: 'UCvTcxoyItMUSlw8T2MajftA',
+    avatarText: 'BSJ',
+    color: 'from-yellow-400 to-amber-700',
+    description: 'Coaching-style ranked Dota',
+    category: 'dota',
+  },
+  {
+    name: 'Purge',
+    twitchChannel: 'purgegamers',
+    youtubeChannelName: 'Purge',
+    youtubeHandle: 'PurgeGamers',
+    youtubeChannelId: 'UCZsM8MOy0VC9blj_wBkbo-g',
+    avatarText: 'PG',
+    color: 'from-indigo-600 to-zinc-900',
+    description: 'Dota analysis & guides',
+    category: 'dota',
+  },
+];
+
+export const VARIETY_STREAMERS: PresetStreamer[] = [
   {
     name: 'Tarik',
     twitchChannel: 'tarik',
@@ -19,6 +107,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCTbtlMEiBfs0zZLQyJzR0Uw',
     avatarText: 'TK',
     color: 'from-amber-500 to-red-600',
+    category: 'variety',
     description: 'VALORANT pro & watch parties',
   },
   {
@@ -29,6 +118,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCMnULQ6F6kLDAHxofDWIbrw',
     avatarText: 'PS',
     color: 'from-purple-600 to-indigo-700',
+    category: 'variety',
     description: 'Game dev & tech multistreamer',
   },
   {
@@ -39,6 +129,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCrPseYLGpNygVi34QpGNqpA',
     avatarText: 'LW',
     color: 'from-rose-500 to-orange-500',
+    category: 'variety',
     description: 'Variety & Mogul events',
   },
   {
@@ -49,6 +140,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCXBE_QQSZueB8082ml5fslg',
     avatarText: 'TT',
     color: 'from-yellow-500 to-amber-600',
+    category: 'variety',
     description: 'Battle Royale & Gaming',
   },
   {
@@ -58,6 +150,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeHandle: 'xQcOW',
     avatarText: 'XQ',
     color: 'from-blue-500 to-cyan-500',
+    category: 'variety',
     description: 'Variety & Just Chatting',
   },
   {
@@ -68,6 +161,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCcJL2ld6kxy_nuV1u7PVQ0g',
     avatarText: 'DOC',
     color: 'from-red-600 to-neutral-900',
+    category: 'variety',
     description: 'The Two-Time Champions Club',
   },
   {
@@ -77,6 +171,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeHandle: 'penguinz0',
     avatarText: 'MC',
     color: 'from-slate-600 to-teal-700',
+    category: 'variety',
     description: 'penguinz0 / Moist Esports',
   },
   {
@@ -87,6 +182,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UC63anZxfVGHUEmfBAf5w7pw',
     avatarText: 'CO',
     color: 'from-orange-600 to-amber-700',
+    category: 'variety',
     description: 'Horror games & comedy',
   },
   {
@@ -97,6 +193,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCtoaZpBnrd0lhycxYJ4MNOQ',
     avatarText: 'HA',
     color: 'from-red-500 to-pink-600',
+    category: 'variety',
     description: 'News, politics & react',
   },
   {
@@ -107,6 +204,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCoz3Kpu5lv-ALhR4h9bDvcw',
     avatarText: 'SH',
     color: 'from-cyan-500 to-blue-700',
+    category: 'variety',
     description: 'FPS & tactical shooters',
   },
   {
@@ -117,6 +215,7 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCWxlUwW9BgGISaakjGM37aw',
     avatarText: 'VR',
     color: 'from-rose-500 to-purple-600',
+    category: 'variety',
     description: 'Gaming & 100 Thieves',
   },
   {
@@ -127,6 +226,13 @@ export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [
     youtubeChannelId: 'UCRAEUAmW9kletIzOxhpLRFw',
     avatarText: 'SK',
     color: 'from-emerald-500 to-teal-600',
+    category: 'variety',
     description: 'Co-op games & GTA RP',
   },
 ];
+
+/** Every known streamer, used for lookups by channel/handle */
+export const POPULAR_MULTISTREAMERS: PresetStreamer[] = [...DOTA_STREAMERS, ...VARIETY_STREAMERS];
+
+export const findPresetByChannel = (channel?: string | null): PresetStreamer | undefined =>
+  channel ? POPULAR_MULTISTREAMERS.find((p) => p.twitchChannel.toLowerCase() === channel.toLowerCase()) : undefined;

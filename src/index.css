@@ -2,52 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+@layer base {
+  :root {
+    color-scheme: dark;
   }
-  to {
-    opacity: 1;
+
+  body {
+    @apply bg-background text-white antialiased;
+  }
+
+  /* Visible keyboard focus everywhere (WCAG 2.4.7) */
+  :focus-visible {
+    @apply outline-none ring-2 ring-purple-400 ring-offset-2 ring-offset-background;
   }
 }
 
-@keyframes scaleUp {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
+@layer components {
+  .kbd {
+    @apply px-1.5 py-px rounded border border-white/10 bg-white/5 font-mono text-[10px] text-gray-300;
   }
-  to {
-    opacity: 1;
-    transform: scale(1);
+
+  .skip-link {
+    @apply sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:px-3 focus:py-2 focus:rounded-lg focus:bg-purple-600 focus:text-white focus:text-sm;
   }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-.animate-scaleUp {
-  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 /* Custom Scrollbar for sleek dark mode */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 8px;
-}
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(100, 116, 139, 0.5);
+  background: rgba(148, 163, 184, 0.35);
   border-radius: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.8);
 }
 
 .no-scrollbar::-webkit-scrollbar {
@@ -57,4 +50,13 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

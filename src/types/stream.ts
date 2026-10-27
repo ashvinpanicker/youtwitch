@@ -7,6 +7,8 @@ export interface StreamHistoryItem {
   isFavorite?: boolean;
 }
 
+export type StreamerCategory = 'dota' | 'variety';
+
 export interface PresetStreamer {
   name: string;
   twitchChannel: string;
@@ -16,4 +18,7 @@ export interface PresetStreamer {
   avatarText?: string;
   color?: string;
   description?: string;
+  category?: StreamerCategory;
+  /** Tournament / event channels that are only live during events (e.g. TI) */
+  isEvent?: boolean;
 }

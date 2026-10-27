@@ -104,6 +104,21 @@ export interface ParsedStreamParams {
   rawTwitchUrl?: string;
 }
 
+export const isYoutubeChannelId = (input: string): boolean => /^UC[a-zA-Z0-9_-]{22}$/.test(input);
+
+/**
+ * Extracts a YouTube channel ID (UC…) from a raw ID or a /channel/ URL
+ */
+export const extractYoutubeChannelId = (input: string): string | null => {
+  const trimmed = (input || '').trim();
+  if (isYoutubeChannelId(trimmed)) return trimmed;
+  const match = trimmed.match(/youtube\.com\/channel\/(UC[a-zA-Z0-9_-]{22})/);
+  return match ? match[1] : null;
+};
+
+export const youtubeInputForId = (id: string): string =>
+  isYoutubeChannelId(id) ? `https://youtube.com/channel/${id}` : `https://youtube.com/watch?v=${id}`;
+
 /**
  * Smart detection for two parameters in either order (yt/tw or tw/yt)
  */
@@ -114,6 +129,14 @@ export const smartDetectStreamPair = (param1: string, param2?: string): ParsedSt
   let youtubeId: string | null = null;
   let twitchChannel: string | null = null;
   let youtubeHandle: string | null = null;
+
+  // YouTube channel IDs (live_stream embeds) look like valid Twitch names, so match them first
+  if (isYoutubeChannelId(p1) && p2) {
+    return { youtubeId: p1, twitchChannel: extractTwitchChannel(p2) };
+  }
+  if (isYoutubeChannelId(p2) && p1) {
+    return { youtubeId: p2, twitchChannel: extractTwitchChannel(p1) };
+  }
 
   if (p1 && p2) {
     const yt1 = extractYoutubeId(p1);

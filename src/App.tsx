@@ -1,11 +1,15 @@
-import React from 'react';
+import { LazyMotion, MotionConfig } from 'motion/react';
 import StreamViewer from './components/StreamViewer';
+
+const loadMotionFeatures = () => import('./motionFeatures').then((mod) => mod.default);
 
 function App() {
   return (
-    <div className="bg-background min-h-screen">
-      <StreamViewer />
-    </div>
+    <MotionConfig reducedMotion="user">
+      <LazyMotion features={loadMotionFeatures} strict>
+        <StreamViewer />
+      </LazyMotion>
+    </MotionConfig>
   );
 }
 
