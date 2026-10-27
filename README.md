@@ -14,6 +14,26 @@ Here's a glimpse of the YouTwitch application in action:
 
 ![YouTwitch Screenshot](public/youtwitch-app.png)
 
+## ⚡ Direct URL Access & Shortcuts
+
+You can directly load or bookmark any stream combination using URL path routes or query parameters:
+
+- **Direct Path:** `https://youtwitch.pages.dev/<youtube_id_or_url>/<twitch_channel>`
+  - Example: `https://youtwitch.pages.dev/dQw4w9WgXcQ/tarik`
+  - Flexible order: `https://youtwitch.pages.dev/tarik/dQw4w9WgXcQ`
+- **Streamer Handle:** `https://youtwitch.pages.dev/<streamer_name>`
+  - Example: `https://youtwitch.pages.dev/tarik`
+- **Query Parameters:**
+  - `https://youtwitch.pages.dev/?yt=dQw4w9WgXcQ&tw=shroud`
+  - `https://youtwitch.pages.dev/?streamer=ludwig`
+
+## 🔍 Favourites, Dota 2 & Quick Finder
+
+- **Favourites:** Star any streamer to pin them to the home screen and the toolbar for one-click switching. zeeddota and The International (TI) are favourites by default.
+- **Dota 2 picks:** ESL, PGL and BLAST tournament channels plus Gorgc, BSJ and Purge are suggested alongside your favourites.
+- **⌘K / Ctrl+K or `/` Quick Finder:** Search streamers, or type any Twitch channel to watch it. Use ↑/↓ and Enter to pick one.
+- **Minimal watch view:** The toolbar hides itself while you watch (move to the top edge to bring it back, or pin it). Drag the divider, or focus it and use the arrow keys, to resize the chat.
+- **1-Click Link Sharing:** Copy a clean direct link to the current stream from the toolbar.
 
 ## Brave Browser Users
 If you are using Brave browser, you will need to turn off shields to log in to Twitch chat.
