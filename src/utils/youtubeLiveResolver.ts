@@ -1,107 +1,59 @@
-import { extractYoutubeId, extractYoutubeHandle } from './urlParser';
-import { POPULAR_MULTISTREAMERS } from './presets';
+import { extractYoutubeId, extractYoutubeHandle, extractYoutubeChannelId } from './urlParser';
+import { parseYoutubeLivePage, YoutubeLiveLookup, YOUTUBE_CHANNEL_TARGET } from './parseYoutubeLivePage';
 
 export interface ResolvedYoutubeStream {
   videoId: string | null;
-  channelId: string | null;
-  handle: string | null;
+  isLive: boolean;
   title?: string | null;
-  isLive?: boolean;
 }
+
+const fetchWithTimeout = (url: string, ms: number) => fetch(url, { signal: AbortSignal.timeout(ms) });
 
 /**
- * Resolves a live stream video ID or channel ID from video URL, video ID, channel URL, or @handle
+ * Turns a video link/ID, channel ID, channel URL or @handle into a YouTube channel path
+ */
+export const toYoutubeChannelTarget = (input: string): string | null => {
+  const trimmed = input.trim();
+  if (YOUTUBE_CHANNEL_TARGET.test(trimmed)) return trimmed;
+  const channelId = extractYoutubeChannelId(trimmed);
+  if (channelId) return `channel/${channelId}`;
+  const handle =
+    extractYoutubeHandle(trimmed) ||
+    trimmed.replace(/^https?:\/\/(?:www\.)?youtube\.com\//, '').replace(/^@/, '').split(/[/?]/)[0];
+  const target = `@${handle}`;
+  return YOUTUBE_CHANNEL_TARGET.test(target) ? target : null;
+};
+
+/**
+ * Finds the current live video for a channel. YouTube issues a new video ID for every
+ * stream, so it has to be looked up each time rather than stored.
  */
 export async function resolveYoutubeLiveStream(input: string): Promise<ResolvedYoutubeStream> {
-  const trimmed = input.trim();
-  if (!trimmed) {
-    return { videoId: null, channelId: null, handle: null };
-  }
+  const directVideoId = extractYoutubeId(input);
+  if (directVideoId) return { videoId: directVideoId, isLive: true };
 
-  // 1. Direct Video ID or Watch URL
-  const directVideoId = extractYoutubeId(trimmed);
-  if (directVideoId) {
-    return { videoId: directVideoId, channelId: null, handle: null, isLive: true };
-  }
+  const target = toYoutubeChannelTarget(input);
+  if (!target) return { videoId: null, isLive: false };
 
-  // 2. Extract Handle or Channel Name
-  const handle = extractYoutubeHandle(trimmed) || trimmed.replace(/^https?:\/\/(?:www\.)?youtube\.com\//, '').replace(/^@/, '').split('/')[0].split('?')[0];
-
-  // Check preset list for known channelId
-  const preset = POPULAR_MULTISTREAMERS.find(
-    (p) =>
-      (p.youtubeHandle && p.youtubeHandle.toLowerCase() === handle.toLowerCase()) ||
-      (p.youtubeChannelName && p.youtubeChannelName.toLowerCase() === handle.toLowerCase()) ||
-      p.twitchChannel.toLowerCase() === handle.toLowerCase()
-  );
-
-  const channelId = preset?.youtubeChannelId || (trimmed.startsWith('UC') && trimmed.length === 24 ? trimmed : null);
-
-  // 3. Try to resolve active video ID from RSS feed or proxy with timeout
-  if (channelId) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-      const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`;
-
-      const res = await fetch(proxyUrl, { signal: controller.signal });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        const text = await res.text();
-        const videoIdMatch = text.match(/<yt:videoId>([a-zA-Z0-9_-]{11})<\/yt:videoId>/);
-        const titleMatch = text.match(/<media:title>([^<]+)<\/media:title>/) || text.match(/<title>([^<]+)<\/title>/);
-
-        if (videoIdMatch && videoIdMatch[1]) {
-          return {
-            videoId: videoIdMatch[1],
-            channelId,
-            handle: preset?.youtubeHandle || handle,
-            title: titleMatch ? titleMatch[1] : null,
-            isLive: true,
-          };
-        }
-      }
-    } catch {
-      // Ignore network/timeout errors and fallback
-    }
-  }
-
-  // 4. Try live endpoint proxy
+  // 1. Our own /api/live function
   try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-    const liveTargetUrl = `https://www.youtube.com/@${handle}/live`;
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(liveTargetUrl)}`;
-
-    const res = await fetch(proxyUrl, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
-    if (res.ok) {
-      const text = await res.text();
-      const match = text.match(/watch\?v=([a-zA-Z0-9_-]{11})/);
-      const channelIdMatch = text.match(/channel_id=([a-zA-Z0-9_-]{24})/);
-
-      if (match && match[1]) {
-        return {
-          videoId: match[1],
-          channelId: channelIdMatch ? channelIdMatch[1] : channelId,
-          handle,
-          isLive: true,
-        };
-      }
-    }
+    const res = await fetchWithTimeout(`/api/live?channel=${encodeURIComponent(target)}`, 9000);
+    if (res.ok) return toResult(await res.json());
   } catch {
-    // Ignore timeout
+    // fall through to the public proxy
   }
 
-  return {
-    videoId: null,
-    channelId,
-    handle,
-    isLive: false,
-  };
+  // 2. Public CORS proxy (when the app is hosted without the API function)
+  try {
+    const liveUrl = `https://www.youtube.com/${target}/live`;
+    const res = await fetchWithTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent(liveUrl)}`, 6000);
+    if (res.ok) return toResult(parseYoutubeLivePage(await res.text()));
+  } catch {
+    // ignore network/timeout errors
+  }
+
+  return { videoId: null, isLive: false };
 }
+
+const toResult = (lookup: YoutubeLiveLookup): ResolvedYoutubeStream =>
+  lookup.isLive && lookup.videoId ? { videoId: lookup.videoId, isLive: true, title: lookup.title } : { videoId: null, isLive: false };

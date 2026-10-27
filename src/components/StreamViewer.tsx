@@ -11,6 +11,7 @@ import {
   SlidersHorizontal,
   Pin,
   PinOff,
+  Clipboard,
   X,
 } from 'lucide-react';
 import {
@@ -18,19 +19,20 @@ import {
   extractYoutubeHandle,
   extractTwitchChannel,
   parseStreamParamsFromUrl,
-  updateBrowserUrl,
-  buildShareableUrl,
   extractYoutubeChannelId,
+  isYoutubeChannelId,
   youtubeInputForId,
+  generateYoutubeLiveSearchUrl,
 } from '../utils/urlParser';
 import { POPULAR_MULTISTREAMERS, findPresetByChannel } from '../utils/presets';
 import { PresetStreamer, StreamHistoryItem } from '../types/stream';
-import { resolveYoutubeLiveStream } from '../utils/youtubeLiveResolver';
+import { resolveYoutubeLiveStream, toYoutubeChannelTarget } from '../utils/youtubeLiveResolver';
 import { useFavorites } from '../hooks/useFavorites';
 import { useMediaQuery } from '../hooks/useMediaQuery';
 import { StreamQuickSearchModal } from './StreamQuickSearchModal';
 import { SourceForm } from './SourceForm';
 import { WelcomeScreen } from './WelcomeScreen';
+import { VideoFallback } from './VideoFallback';
 import { StreamerAvatar } from './StreamerTile';
 import { ChatResizer, CHAT_DEFAULT_WIDTH, CHAT_MIN_WIDTH, CHAT_MAX_WIDTH } from './ChatResizer';
 
@@ -70,11 +72,24 @@ const loadChatWidth = () => {
 const iconButton =
   'inline-flex items-center justify-center w-9 h-9 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors';
 
+/** A known preset for the Twitch channel (or a bare one), with YouTube details overridden */
+const streamerForChannel = (channel: string, youtube: Partial<PresetStreamer> = {}): PresetStreamer => ({
+  ...(findPresetByChannel(channel) || { name: channel, twitchChannel: channel, youtubeChannelName: channel, youtubeHandle: channel }),
+  ...youtube,
+});
+
+type YoutubeStatus = 'idle' | 'resolving' | 'live' | 'offline';
+
+const LIVE_RECHECK_MS = 60_000;
+
 const StreamViewer: React.FC = () => {
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [twitchUrl, setTwitchUrl] = useState('');
   const [activeYoutubeId, setActiveYoutubeId] = useState<string | null>(null);
   const [activeTwitchChannel, setActiveTwitchChannel] = useState<string | null>(null);
+  /** Channel we look the live video up from (`@handle` or `channel/UC…`); null when a specific video was pasted */
+  const [youtubeSource, setYoutubeSource] = useState<string | null>(null);
+  const [youtubeStatus, setYoutubeStatus] = useState<YoutubeStatus>('idle');
   const [chatWidth, setChatWidth] = useState(loadChatWidth);
   const [isChatHidden, setIsChatHidden] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -83,7 +98,6 @@ const StreamViewer: React.FC = () => {
   const [copiedLink, setCopiedLink] = useState(false);
   const [history, setHistory] = useState<StreamHistoryItem[]>(loadHistory);
   const [toast, setToast] = useState<string | null>(null);
-  const [isResolvingLive, setIsResolvingLive] = useState(false);
   const [isPinned, setIsPinned] = useState(() => readStorage(PIN_STORAGE_KEY) === 'true');
   const [isToolbarRevealed, setIsToolbarRevealed] = useState(true);
   const [isToolbarEngaged, setIsToolbarEngaged] = useState(false);
@@ -92,8 +106,10 @@ const StreamViewer: React.FC = () => {
   const canHover = useMediaQuery('(min-width: 768px) and (hover: hover)');
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+  const lookupRequest = useRef(0);
 
-  const isWatching = !!activeYoutubeId && !!activeTwitchChannel;
+  const isWatching = !!activeTwitchChannel;
+  const isResolvingLive = youtubeStatus === 'resolving';
   const currentStreamer = findPresetByChannel(activeTwitchChannel);
   const currentName = currentStreamer?.name || activeTwitchChannel || '';
 
@@ -139,69 +155,81 @@ const StreamViewer: React.FC = () => {
 
   const handleDeleteHistory = (id: string) => saveHistory(history.filter((item) => item.id !== id));
 
-  const startStream = useCallback(
+  /** Plays one specific YouTube video next to the chat */
+  const playVideo = useCallback(
     (ytId: string, channel: string, name?: string) => {
+      lookupRequest.current++; // cancel any pending live lookup
+      setYoutubeSource(null);
+      setYoutubeStatus('live');
       setActiveYoutubeId(ytId);
       setActiveTwitchChannel(channel);
+      setYoutubeUrl(`https://youtube.com/watch?v=${ytId}`);
       addStreamToHistory(ytId, channel, name);
     },
     [addStreamToHistory]
   );
 
   /**
-   * Loads a streamer. A known YouTube channel ID embeds the channel's current live
-   * stream directly; otherwise we try to resolve the live video from the handle.
+   * Looks up the channel's current live video. YouTube gives every stream a new video ID,
+   * so this runs each time a streamer is opened (and periodically while they're offline).
    */
-  const loadStreamer = useCallback(
-    async (streamer: PresetStreamer) => {
-      const channel = streamer.twitchChannel;
-      const handle = streamer.youtubeHandle || streamer.youtubeChannelName;
-      setTwitchUrl(`https://twitch.tv/${channel}`);
-      setYoutubeUrl(`https://youtube.com/@${handle}`);
-      setIsSearchModalOpen(false);
-
-      if (streamer.youtubeChannelId) {
-        startStream(streamer.youtubeChannelId, channel, streamer.name);
-        return;
-      }
-
-      setIsResolvingLive(true);
-      try {
-        const resolved = await resolveYoutubeLiveStream(`@${handle}`);
-        const ytId = resolved.videoId || resolved.channelId;
-        if (ytId) {
-          startStream(ytId, channel, streamer.name);
-        } else {
-          setIsSourcesOpen(true);
-          showToast(`Couldn’t find ${streamer.name}’s YouTube live. Open their live page and paste the link.`, 6000);
-        }
-      } finally {
-        setIsResolvingLive(false);
+  const lookupLive = useCallback(
+    async (source: string, channel: string, name?: string, silent = false) => {
+      const request = ++lookupRequest.current;
+      if (!silent) setYoutubeStatus('resolving');
+      const resolved = await resolveYoutubeLiveStream(source);
+      if (request !== lookupRequest.current) return;
+      if (resolved.videoId) {
+        setActiveYoutubeId(resolved.videoId);
+        setYoutubeStatus('live');
+        addStreamToHistory(resolved.videoId, channel, name);
+      } else {
+        setActiveYoutubeId(null);
+        setYoutubeStatus('offline');
       }
     },
-    [startStream, showToast]
+    [addStreamToHistory]
+  );
+
+  const loadStreamer = useCallback(
+    (streamer: PresetStreamer) => {
+      const channel = streamer.twitchChannel;
+      const handle = streamer.youtubeHandle || streamer.youtubeChannelName;
+      const source = streamer.youtubeChannelId ? `channel/${streamer.youtubeChannelId}` : toYoutubeChannelTarget(handle);
+      setTwitchUrl(`https://twitch.tv/${channel}`);
+      setYoutubeUrl(streamer.youtubeChannelId && !streamer.youtubeHandle ? youtubeInputForId(streamer.youtubeChannelId) : `https://youtube.com/@${handle}`);
+      setIsSearchModalOpen(false);
+      setIsSourcesOpen(false);
+      setActiveTwitchChannel(channel);
+      setActiveYoutubeId(null);
+      setYoutubeSource(source);
+      if (source) lookupLive(source, channel, streamer.name);
+      else setYoutubeStatus('offline');
+    },
+    [lookupLive]
   );
 
   // Initial load & URL route / query parameter handling
   useEffect(() => {
-    const handleUrlRoute = async () => {
+    const handleUrlRoute = () => {
       const parsed = parseStreamParamsFromUrl();
 
       if (parsed.youtubeId && parsed.twitchChannel) {
-        setYoutubeUrl(youtubeInputForId(parsed.youtubeId));
         setTwitchUrl(`https://twitch.tv/${parsed.twitchChannel}`);
-        startStream(parsed.youtubeId, parsed.twitchChannel);
+        if (isYoutubeChannelId(parsed.youtubeId)) {
+          const preset = findPresetByChannel(parsed.twitchChannel);
+          loadStreamer(
+            preset?.youtubeChannelId === parsed.youtubeId
+              ? preset
+              : streamerForChannel(parsed.twitchChannel, { youtubeChannelId: parsed.youtubeId, youtubeHandle: undefined })
+          );
+        } else {
+          playVideo(parsed.youtubeId, parsed.twitchChannel);
+        }
       } else if (parsed.youtubeHandle && parsed.twitchChannel) {
-        const preset = findPresetByChannel(parsed.twitchChannel);
-        loadStreamer({
-          ...(preset || { name: parsed.twitchChannel, twitchChannel: parsed.twitchChannel, youtubeChannelName: parsed.youtubeHandle }),
-          youtubeHandle: parsed.youtubeHandle,
-        });
+        loadStreamer(streamerForChannel(parsed.twitchChannel, { youtubeHandle: parsed.youtubeHandle, youtubeChannelId: undefined }));
       } else if (parsed.singleStreamer || parsed.twitchChannel) {
-        const channel = (parsed.singleStreamer || parsed.twitchChannel)!;
-        loadStreamer(
-          findPresetByChannel(channel) || { name: channel, twitchChannel: channel, youtubeChannelName: channel, youtubeHandle: channel }
-        );
+        loadStreamer(streamerForChannel((parsed.singleStreamer || parsed.twitchChannel)!));
       } else {
         const savedYtUrl = readStorage('streamViewer_youtubeUrl');
         const savedTwUrl = readStorage('streamViewer_twitchUrl');
@@ -213,17 +241,32 @@ const StreamViewer: React.FC = () => {
     handleUrlRoute();
     window.addEventListener('popstate', handleUrlRoute);
     return () => window.removeEventListener('popstate', handleUrlRoute);
-  }, [startStream, loadStreamer]);
+  }, [playVideo, loadStreamer]);
 
-  // Sync to browser URL bar, title & localStorage when active stream changes
+  // Keep re-checking while the channel is offline, so the stream appears once they go live
   useEffect(() => {
-    if (activeYoutubeId && activeTwitchChannel) {
-      updateBrowserUrl(activeYoutubeId, activeTwitchChannel);
-      writeStorage('streamViewer_activeYoutubeId', activeYoutubeId);
-      writeStorage('streamViewer_activeTwitchChannel', activeTwitchChannel);
-      document.title = `${currentName} · YouTwitch`;
-    }
-  }, [activeYoutubeId, activeTwitchChannel, currentName]);
+    if (youtubeStatus !== 'offline' || !youtubeSource || !activeTwitchChannel) return;
+    const timer = setInterval(() => {
+      if (document.visibilityState === 'visible') lookupLive(youtubeSource, activeTwitchChannel, currentName, true);
+    }, LIVE_RECHECK_MS);
+    return () => clearInterval(timer);
+  }, [youtubeStatus, youtubeSource, activeTwitchChannel, currentName, lookupLive]);
+
+  // Address bar path: presets and channels re-resolve the live video on load; pasted videos stay fixed
+  const currentPath = !activeTwitchChannel
+    ? '/'
+    : youtubeSource
+      ? currentStreamer && (!currentStreamer.youtubeChannelId || youtubeSource === `channel/${currentStreamer.youtubeChannelId}`)
+        ? `/${activeTwitchChannel}`
+        : `/${youtubeSource.replace(/^channel\//, '')}/${activeTwitchChannel}`
+      : `/${activeYoutubeId}/${activeTwitchChannel}`;
+
+  useEffect(() => {
+    if (!activeTwitchChannel) return;
+    if (window.location.pathname !== currentPath) window.history.replaceState(null, '', currentPath);
+    writeStorage('streamViewer_activeTwitchChannel', activeTwitchChannel);
+    document.title = `${currentName} · YouTwitch`;
+  }, [currentPath, activeTwitchChannel, currentName]);
 
   useEffect(() => {
     if (youtubeUrl) writeStorage('streamViewer_youtubeUrl', youtubeUrl);
@@ -251,71 +294,77 @@ const StreamViewer: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const initialiseStreamAndChat = async () => {
+  const initialiseStreamAndChat = () => {
     const twitchChannel = extractTwitchChannel(twitchUrl);
     if (!twitchChannel) return;
+    setIsSourcesOpen(false);
 
-    const directYtId = extractYoutubeChannelId(youtubeUrl) || extractYoutubeId(youtubeUrl);
-    if (directYtId) {
-      startStream(directYtId, twitchChannel);
-      setIsSourcesOpen(false);
+    const videoId = extractYoutubeId(youtubeUrl);
+    if (videoId) {
+      playVideo(videoId, twitchChannel);
       return;
     }
-
-    setIsResolvingLive(true);
-    try {
-      const resolved = await resolveYoutubeLiveStream(youtubeUrl);
-      const handle = extractYoutubeHandle(youtubeUrl) || youtubeUrl.trim().replace(/^@/, '');
-      const preset = POPULAR_MULTISTREAMERS.find(
-        (p) =>
-          p.youtubeChannelName.toLowerCase() === handle.toLowerCase() ||
-          p.twitchChannel.toLowerCase() === handle.toLowerCase()
-      );
-      const ytId = resolved.videoId || resolved.channelId || preset?.youtubeChannelId;
-      if (ytId) {
-        startStream(ytId, twitchChannel, resolved.handle || twitchChannel);
-        setIsSourcesOpen(false);
-      } else {
-        showToast('Couldn’t find a live stream. Open the channel’s live page and paste the link.', 6000);
-      }
-    } catch {
-      showToast('Error resolving live stream.');
-    } finally {
-      setIsResolvingLive(false);
+    const channelId = extractYoutubeChannelId(youtubeUrl);
+    if (channelId) {
+      loadStreamer(streamerForChannel(twitchChannel, { youtubeChannelId: channelId, youtubeHandle: undefined }));
+      return;
     }
+    const handle = extractYoutubeHandle(youtubeUrl) || youtubeUrl.trim().replace(/^@/, '');
+    const preset = POPULAR_MULTISTREAMERS.find(
+      (p) => p.youtubeHandle?.toLowerCase() === handle.toLowerCase() || p.youtubeChannelName.toLowerCase() === handle.toLowerCase()
+    );
+    loadStreamer(
+      streamerForChannel(twitchChannel, preset ? { youtubeHandle: preset.youtubeHandle, youtubeChannelId: preset.youtubeChannelId } : { youtubeHandle: handle, youtubeChannelId: undefined })
+    );
   };
 
   const handleSelectHistory = (item: StreamHistoryItem) => {
-    setYoutubeUrl(youtubeInputForId(item.youtubeId));
-    setTwitchUrl(`https://twitch.tv/${item.twitchChannel}`);
-    startStream(item.youtubeId, item.twitchChannel, item.name);
     setIsSearchModalOpen(false);
+    const preset = findPresetByChannel(item.twitchChannel);
+    if (preset) loadStreamer(preset);
+    else if (isYoutubeChannelId(item.youtubeId)) loadStreamer(streamerForChannel(item.twitchChannel, { youtubeChannelId: item.youtubeId, youtubeHandle: undefined }));
+    else playVideo(item.youtubeId, item.twitchChannel, item.name);
+  };
+
+  /** Fallback when the live lookup fails or the embed is unavailable: play a pasted link */
+  const playYoutubeLink = (text: string): boolean => {
+    const ytId = extractYoutubeId(text);
+    const channel = activeTwitchChannel || extractTwitchChannel(twitchUrl);
+    if (!ytId) {
+      showToast('That doesn’t look like a YouTube video link.');
+      return false;
+    }
+    if (!channel) {
+      setYoutubeUrl(`https://youtube.com/watch?v=${ytId}`);
+      return true;
+    }
+    playVideo(ytId, channel, currentName || undefined);
+    setIsSourcesOpen(false);
+    return true;
+  };
+
+  const pasteYoutubeLinkFromClipboard = async () => {
+    try {
+      playYoutubeLink(await navigator.clipboard.readText());
+    } catch {
+      showToast('Clipboard access was blocked. Paste into the field instead.');
+    }
   };
 
   const handlePasteToYoutubeInput = async () => {
     try {
       const text = await navigator.clipboard.readText();
-      const ytId = extractYoutubeId(text);
-      if (!ytId) {
-        setYoutubeUrl(text);
-        return;
-      }
-      setYoutubeUrl(`https://youtube.com/watch?v=${ytId}`);
-      const tw = extractTwitchChannel(twitchUrl);
-      if (tw) {
-        startStream(ytId, tw);
-        setIsSourcesOpen(false);
-        showToast('YouTube link pasted and loaded', 2500);
-      }
+      if (extractYoutubeId(text)) playYoutubeLink(text);
+      else setYoutubeUrl(text);
     } catch {
       showToast('Clipboard access was blocked. Paste into the field instead.');
     }
   };
 
   const handleCopyShareLink = async () => {
-    if (!activeYoutubeId || !activeTwitchChannel) return;
+    if (!activeTwitchChannel) return;
     try {
-      await navigator.clipboard.writeText(buildShareableUrl(activeYoutubeId, activeTwitchChannel));
+      await navigator.clipboard.writeText(`${window.location.origin}${currentPath}`);
       setCopiedLink(true);
       showToast('Link copied', 2000);
       setTimeout(() => setCopiedLink(false), 2000);
@@ -326,8 +375,11 @@ const StreamViewer: React.FC = () => {
 
   const goHome = (e: React.MouseEvent) => {
     e.preventDefault();
+    lookupRequest.current++;
     setActiveYoutubeId(null);
     setActiveTwitchChannel(null);
+    setYoutubeSource(null);
+    setYoutubeStatus('idle');
     setIsSourcesOpen(false);
     window.history.pushState({}, '', '/');
     document.title = 'YouTwitch: YouTube Stream + Twitch Chat';
@@ -351,7 +403,7 @@ const StreamViewer: React.FC = () => {
   }, []);
 
   // Toolbar auto-hide while watching (desktop pointer devices only, unless pinned)
-  const autoHide = isWatching && canHover && !isPinned;
+  const autoHide = isWatching && !!activeYoutubeId && canHover && !isPinned;
   const isToolbarVisible = !autoHide || isToolbarRevealed || isToolbarEngaged || isSourcesOpen || isSearchModalOpen;
 
   const revealToolbar = useCallback(() => {
@@ -382,11 +434,10 @@ const StreamViewer: React.FC = () => {
   };
 
   const hostname = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost';
-  const youtubeEmbedSrc = activeYoutubeId
-    ? activeYoutubeId.startsWith('UC')
-      ? `https://www.youtube.com/embed/live_stream?channel=${activeYoutubeId}&autoplay=1`
-      : `https://www.youtube.com/embed/${activeYoutubeId}?autoplay=1`
-    : '';
+  const youtubeEmbedSrc = activeYoutubeId ? `https://www.youtube.com/embed/${activeYoutubeId}?autoplay=1` : '';
+  const youtubeLivePageUrl = youtubeSource
+    ? `https://www.youtube.com/${youtubeSource}/live`
+    : generateYoutubeLiveSearchUrl(currentName);
 
   const sourceForm = (
     <SourceForm
@@ -492,6 +543,15 @@ const StreamViewer: React.FC = () => {
               <>
                 <button
                   type="button"
+                  onClick={pasteYoutubeLinkFromClipboard}
+                  aria-label="Play a YouTube link from the clipboard"
+                  title="Video unavailable? Paste a YouTube link"
+                  className={iconButton}
+                >
+                  <Clipboard className="w-4 h-4" aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setIsSourcesOpen((prev) => !prev)}
                   aria-expanded={isSourcesOpen}
                   aria-controls="stream-sources"
@@ -582,14 +642,25 @@ const StreamViewer: React.FC = () => {
         {isWatching ? (
           <div className="flex-1 flex flex-col md:flex-row min-h-0">
             <div className="bg-black w-full aspect-video max-h-[60dvh] md:max-h-none md:aspect-auto md:flex-1 shrink-0 md:shrink">
-              <iframe
-                key={youtubeEmbedSrc}
-                src={youtubeEmbedSrc}
-                title={`${currentName} YouTube stream`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="w-full h-full border-0"
-              />
+              {activeYoutubeId ? (
+                <iframe
+                  key={youtubeEmbedSrc}
+                  src={youtubeEmbedSrc}
+                  title={`${currentName} YouTube stream`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="w-full h-full border-0"
+                />
+              ) : (
+                <VideoFallback
+                  name={currentName}
+                  isResolving={isResolvingLive}
+                  livePageUrl={youtubeLivePageUrl}
+                  onSubmitLink={playYoutubeLink}
+                  onPasteFromClipboard={pasteYoutubeLinkFromClipboard}
+                  onRetry={youtubeSource ? () => lookupLive(youtubeSource, activeTwitchChannel, currentName) : undefined}
+                />
+              )}
             </div>
 
             {!isChatHidden && (
