@@ -73,23 +73,34 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 py-8 sm:py-14 space-y-10">
+      {/* The classic flow first: a YouTube stream + a Twitch chat, side by side */}
       <m.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="text-center space-y-5"
+        className="space-y-5"
       >
-        <div className="space-y-2">
+        <div className="text-center space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">YouTube streams, Twitch chat.</h1>
-          <p className="text-sm sm:text-base text-gray-400">Pick a streamer to watch their YouTube live with Twitch chat side by side.</p>
+          <p className="text-sm sm:text-base text-gray-400">
+            Paste a YouTube stream and a Twitch channel to watch them side by side.
+          </p>
         </div>
+        {children && (
+          <section
+            aria-label="Watch a YouTube stream with Twitch chat"
+            className="p-4 sm:p-5 rounded-2xl bg-white/[0.03] border border-white/10 shadow-xl shadow-black/20"
+          >
+            {children}
+          </section>
+        )}
         <button
           type="button"
           onClick={onOpenSearch}
-          className="w-full max-w-md mx-auto flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/10 hover:border-white/20 hover:bg-white/[0.06] text-left text-sm text-gray-400 transition-colors"
+          className="w-full max-w-md mx-auto flex items-center gap-3 px-4 py-2.5 rounded-xl border border-white/[0.06] hover:border-white/15 hover:bg-white/[0.04] text-left text-sm text-gray-400 transition-colors"
         >
           <Search className="w-4 h-4" aria-hidden="true" />
-          <span className="flex-1">Search streamers…</span>
+          <span className="flex-1">Or search streamers…</span>
           <kbd className="kbd hidden sm:inline-block">⌘K</kbd>
         </button>
       </m.div>
@@ -118,15 +129,6 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       <Section id="welcome-favorites" title="Favourites" hint="Star a streamer to pin it here" streamers={favoriteStreamers} {...shared} />
       <Section id="welcome-dota" title="More Dota 2" streamers={DOTA_STREAMERS.filter(notFavorite)} {...shared} />
       <Section id="welcome-more" title="Other multistreamers" streamers={VARIETY_STREAMERS.filter(notFavorite).slice(0, 6)} {...shared} />
-
-      {children && (
-        <section aria-labelledby="welcome-custom" className="pt-2">
-          <h2 id="welcome-custom" className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3 px-1">
-            Or paste links
-          </h2>
-          <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">{children}</div>
-        </section>
-      )}
     </div>
   );
 };

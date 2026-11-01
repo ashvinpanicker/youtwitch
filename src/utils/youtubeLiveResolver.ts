@@ -32,10 +32,14 @@ export async function resolveYoutubeLiveStream(input: string): Promise<ResolvedY
   const target = toYoutubeChannelTarget(input);
   if (!target) return { videoId: null, isLive: false };
 
-  // 1. Our own /api/live function
+  // 1. Our own /api/live function (Vercel, Cloudflare Pages or the Vite dev server)
   try {
     const res = await fetchWithTimeout(`/api/live?channel=${encodeURIComponent(target)}`, 9000);
-    if (res.ok) return toResult(await res.json());
+    const isJson = res.headers.get('content-type')?.includes('application/json');
+    if (res.ok && isJson) {
+      const lookup: YoutubeLiveLookup = await res.json();
+      if (!lookup.error) return toResult(lookup);
+    }
   } catch {
     // fall through to the public proxy
   }
@@ -49,7 +53,8 @@ export async function resolveYoutubeLiveStream(input: string): Promise<ResolvedY
     // ignore network/timeout errors
   }
 
-  return { videoId: null, isLive: false };
+  // Nothing could reach YouTube: we don't know whether they're live
+  return { videoId: null, isLive: false, error: true };
 }
 
 /** Only a stream that is live right now counts; ended or scheduled videos are treated as offline */
