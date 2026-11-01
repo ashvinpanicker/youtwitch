@@ -14,6 +14,8 @@ interface VideoFallbackProps {
   thumbnailKey?: number;
   onSelectStreamer: (streamer: PresetStreamer) => void;
   isResolving: boolean;
+  /** The live check itself failed, so we can't say they're offline */
+  lookupFailed?: boolean;
   livePageUrl: string;
   /** Returns true when the link was accepted */
   onSubmitLink: (link: string) => boolean;
@@ -32,6 +34,7 @@ export const VideoFallback: React.FC<VideoFallbackProps> = ({
   thumbnailKey,
   onSelectStreamer,
   isResolving,
+  lookupFailed,
   livePageUrl,
   onSubmitLink,
   onPasteFromClipboard,
@@ -77,12 +80,14 @@ export const VideoFallback: React.FC<VideoFallbackProps> = ({
           <div className="flex flex-col items-center gap-2">
             <span className="relative hidden sm:block">
               <StreamerAvatar streamer={streamer} size="xl" avatarUrl={avatarUrl} />
-              <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-1.5 rounded bg-[#3a3a3d] text-[10px] font-bold uppercase tracking-wide text-gray-200 leading-4">
-                Offline
-              </span>
+              {!lookupFailed && (
+                <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-1.5 rounded bg-[#3a3a3d] text-[10px] font-bold uppercase tracking-wide text-gray-200 leading-4">
+                  Offline
+                </span>
+              )}
             </span>
             <h2 id={`${ids}-title`} className="sm:mt-2 text-base sm:text-lg font-semibold text-white">
-              {name} is offline on YouTube
+              {lookupFailed ? `Couldn’t check if ${name} is live` : `${name} is offline on YouTube`}
             </h2>
             <p className="hidden sm:block text-sm text-gray-300">
               Chat is still on. If they are streaming, paste the YouTube link to watch it here.

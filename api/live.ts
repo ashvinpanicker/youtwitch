@@ -13,10 +13,10 @@ const lookupChannel = async (target: string): Promise<YoutubeLiveLookup> => {
       },
       signal: AbortSignal.timeout(8000),
     });
-    if (!res.ok) return { videoId: null, isLive: false };
+    if (!res.ok) return { videoId: null, isLive: false, error: res.status !== 404 };
     return parseYoutubeLivePage(await res.text());
   } catch {
-    return { videoId: null, isLive: false };
+    return { videoId: null, isLive: false, error: true };
   }
 };
 

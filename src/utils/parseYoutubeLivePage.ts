@@ -10,6 +10,8 @@ export interface YoutubeLiveLookup {
   category?: string | null;
   channelName?: string | null;
   avatarUrl?: string | null;
+  /** YouTube couldn't be reached, so we don't actually know whether the channel is live */
+  error?: boolean;
 }
 
 const decodeEntities = (text: string) =>

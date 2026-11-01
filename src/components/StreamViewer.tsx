@@ -23,6 +23,7 @@ import {
   isYoutubeChannelId,
   youtubeInputForId,
   generateYoutubeLiveSearchUrl,
+  generateYoutubeChannelLiveUrl,
 } from '../utils/urlParser';
 import { POPULAR_MULTISTREAMERS, findPresetByChannel } from '../utils/presets';
 import { PresetStreamer, StreamHistoryItem } from '../types/stream';
@@ -217,12 +218,17 @@ const StreamViewer: React.FC = () => {
         setActiveYoutubeId(resolved.videoId);
         setYoutubeStatus('live');
         addStreamToHistory(resolved.videoId, channel, name);
+      } else if (resolved.error && source.startsWith('channel/')) {
+        // Lookup unavailable: fall back to YouTube's own "current live stream" player for the channel
+        setActiveYoutubeId(source.slice('channel/'.length));
+        setYoutubeStatus('live');
+        if (!silent) showToast('Couldn’t check the live link. If the video is unavailable, paste the YouTube link.', 6000);
       } else {
         setActiveYoutubeId(null);
         setYoutubeStatus('offline');
       }
     },
-    [addStreamToHistory]
+    [addStreamToHistory, showToast]
   );
 
   const loadStreamer = useCallback(
@@ -470,10 +476,17 @@ const StreamViewer: React.FC = () => {
   };
 
   const hostname = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost';
-  const youtubeEmbedSrc = activeYoutubeId ? `https://www.youtube.com/embed/${activeYoutubeId}?autoplay=1` : '';
-  const youtubeLivePageUrl = youtubeSource
-    ? `https://www.youtube.com/${youtubeSource}/live`
-    : generateYoutubeLiveSearchUrl(currentName);
+  const youtubeEmbedSrc = !activeYoutubeId
+    ? ''
+    : isYoutubeChannelId(activeYoutubeId)
+      ? `https://www.youtube.com/embed/live_stream?channel=${activeYoutubeId}&autoplay=1`
+      : `https://www.youtube.com/embed/${activeYoutubeId}?autoplay=1`;
+  // Prefer the readable @handle/live URL (e.g. youtube.com/@zeeddota2/live)
+  const youtubeLivePageUrl = !youtubeSource
+    ? generateYoutubeLiveSearchUrl(currentName)
+    : youtubeSource.startsWith('channel/') && activeStreamer?.youtubeHandle
+      ? generateYoutubeChannelLiveUrl(activeStreamer.youtubeHandle)
+      : `https://www.youtube.com/${youtubeSource}/live`;
 
   const sourceForm = (
     <SourceForm
@@ -701,6 +714,7 @@ const StreamViewer: React.FC = () => {
                     thumbnailKey={liveStatus.fetchedAt}
                     onSelectStreamer={loadStreamer}
                     isResolving={isResolvingLive}
+                    lookupFailed={!!currentStream?.error}
                     livePageUrl={youtubeLivePageUrl}
                     onSubmitLink={playYoutubeLink}
                     onPasteFromClipboard={pasteYoutubeLinkFromClipboard}
